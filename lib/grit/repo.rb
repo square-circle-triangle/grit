@@ -36,7 +36,7 @@ module Grit
         raise NoSuchPathError.new(epath)
       end
       
-      self.git = Git.new(self.path)
+      self.git = Git.new(self.path, self.working_dir)
     end
    
     # Does nothing yet...
