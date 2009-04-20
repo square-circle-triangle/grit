@@ -40,11 +40,22 @@ module Grit
     end
    
     # Does nothing yet...
-    def self.init(path)
-      # !! TODO !!
-      # create directory
-      # generate initial git directory
-      # create new Grit::Repo on that dir, return it
+    def self.init(path, options = {})
+      epath = File.expand_path(path)
+
+      if epath =~ /\.git$/ || options[:is_bare]
+        path = epath
+        working_dir = nil
+      else
+        path = File.join(epath, '.git')
+        working_dir = epath
+      end
+
+      git = Git.new(path, working_dir)
+
+      git.init
+
+      Repo.new(epath)
     end
     
     # The project's description. Taken verbatim from GIT_REPO/description
