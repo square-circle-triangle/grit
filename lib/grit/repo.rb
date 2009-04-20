@@ -40,7 +40,7 @@ module Grit
     end
    
     # Does nothing yet...
-    def self.init(path, options = {})
+    def self.init(path, options = {})  
       epath = File.expand_path(path)
 
       if epath =~ /\.git$/ || options[:is_bare]
@@ -149,6 +149,10 @@ module Grit
     # Returns Grit::Remote[] (baked)
     def remotes
       Remote.find_all(self)
+    end
+    
+    def remote_add(name = nil, url = nil)
+      self.git.remote({}, 'add', name, url)
     end
 
     # An array of Ref objects representing the refs in
@@ -443,6 +447,11 @@ module Grit
     def inspect
       %Q{#<Grit::Repo "#{@path}">}
     end
+    
+    def push(repository = nil, refspec = nil)
+      self.git.push({}, repository, refspec)
+    end
+    
   end # Repo
   
 end # Grit
