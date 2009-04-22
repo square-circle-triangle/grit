@@ -1,5 +1,5 @@
 module Grit
-  
+
   class Git
     class GitTimeout < RuntimeError
       attr_reader :command, :bytes_read
@@ -11,37 +11,38 @@ module Grit
     end
 
     undef_method :clone
-    
+
     include GitRuby
-    
+
     class << self
       attr_accessor :git_binary, :git_timeout, :git_max_size
     end
-  
+
     self.git_binary   = "/usr/bin/env git"
     self.git_timeout  = 10
     self.git_max_size = 5242880 # 5.megabytes
-    
+
     def self.with_timeout(timeout = 10.seconds)
       old_timeout = Grit::Git.git_timeout
       Grit::Git.git_timeout = timeout
       yield
       Grit::Git.git_timeout = old_timeout
     end
-    
+
     attr_accessor :git_dir, :work_tree, :bytes_read
-    
+    attr_reader :last_error, :last_response
+
     def initialize(git_dir, work_tree=nil)
       self.git_dir    = git_dir
       self.work_tree  = work_tree
       self.bytes_read = 0
     end
-    
+
     def shell_escape(str)
       str.to_s.gsub("'", "\\\\'").gsub(";", '\\;')
     end
     alias_method :e, :shell_escape
-    
+
     # Run the given git command with the specified arguments and return
     # the result as a String
     #   +cmd+ is the command
@@ -57,7 +58,7 @@ module Grit
     end
 
     def git_options
-      { :git_dir => self.git_dir, :work_tree => self.work_tree }
+      { :git_dir => self.git_dir, :work_tree => self.work_tree }.reject { |k, v| v.nil? }
     end
 
     def run(prefix, cmd, postfix, options, args)
@@ -73,6 +74,7 @@ module Grit
       response, err = timeout ? sh(call) : wild_sh(call)
       Grit.log(response) if Grit.debug
       Grit.log(err) if Grit.debug
+      @last_error, @last_response = err, response
       response
     end
 
@@ -142,5 +144,5 @@ module Grit
       args
     end
   end # Git
-  
+
 end # Grit
