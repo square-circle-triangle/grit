@@ -492,14 +492,13 @@ module Grit
     private
 
       def in_working_dir(&block)
-        cwd = Dir.pwd
         cwt = self.git.work_tree
 
-        Dir.chdir(cwt)
+        Dir.chdir(cwt) do
           self.git.work_tree = nil
             yield
           self.git.work_tree = cwt
-        Dir.chdir(cwd)
+        end
       end
 
       def last_error
