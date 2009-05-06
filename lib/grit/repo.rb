@@ -11,6 +11,9 @@ module Grit
 
   class RemoteBranchExistsError < StandardError
   end
+  
+  class RemoteUninitializedError < StandardError
+  end
 
   class Repo
     DAEMON_EXPORT_FILE = 'git-daemon-export-ok'
@@ -212,7 +215,9 @@ module Grit
     #
     # Returns Grit::Commit[] (baked)
     def commits_between(from, to)
-      Commit.find_all(self, "#{from}..#{to}").reverse
+      result = Commit.find_all(self, "#{from}..#{to}").reverse
+      remote_error
+      result
     end
 
     # The Commits objects that are newer than the specified date.
@@ -489,6 +494,14 @@ module Grit
       remote_error_or_response
     end
 
+    def last_error
+      !self.git.last_error.blank? ? self.git.last_error : nil
+    end
+
+    def last_response
+      !self.git.last_response.blank? ? self.git.last_response : nil
+    end
+
     private
 
       def in_working_dir(&block)
@@ -500,16 +513,8 @@ module Grit
           self.git.work_tree = cwt
         end
       end
-
-      def last_error
-        !self.git.last_error.blank? ? self.git.last_error : nil
-      end
-
-      def last_response
-        !self.git.last_response.blank? ? self.git.last_response : nil
-      end
-
-      def remote_error_or_response
+      
+      def remote_error
         if last_error =~ /fatal: '.*': unable to chdir or not a git archive/
           raise RemoteNonexistentError, last_error
         elsif last_error =~ /ssh: Could not resolve hostname .*: nodename nor servname provided, or not known/
@@ -518,11 +523,16 @@ module Grit
           raise BranchNonexistentError, last_error
         elsif last_error =~ /error: src refspec .* does not match any./
           raise BranchNonexistentError, last_error
+        elsif last_error =~ /unknown revision or path not in the working tree/
+          raise RemoteUninitializedError, last_error
         elsif last_error =~ /(error|fatal)/
           raise RemoteError, last_error
-        else
-          last_response
         end
+      end
+
+      def remote_error_or_response
+        remote_error
+        last_response
       end
 
   end # Repo
