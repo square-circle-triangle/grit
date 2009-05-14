@@ -11,7 +11,7 @@ module Grit
 
   class RemoteBranchExistsError < StandardError
   end
-  
+
   class RemoteUninitializedError < StandardError
   end
 
@@ -145,9 +145,23 @@ module Grit
     end
 
     # Remove files from the index
-    def remove(*files)
+    def rm(*files)
       self.git.rm({}, *files.flatten)
     end
+
+    alias :remove :rm
+
+    def rm_r(*files)
+      self.git.rm({}, '-r', *files.flatten)
+    end
+
+    alias :remove_recursively :rm_r
+
+    def mv(source, destination)
+      self.git.mv({}, source, destination)
+    end
+
+    alias :move :mv
 
 
     def blame_tree(commit, path = nil)
@@ -513,7 +527,7 @@ module Grit
           self.git.work_tree = cwt
         end
       end
-      
+
       def remote_error
         if last_error =~ /fatal: '.*': unable to chdir or not a git archive/
           raise RemoteNonexistentError, last_error
