@@ -162,6 +162,14 @@ module Grit
     end
 
     alias :move :mv
+    
+    def checkout_path_commit(commit, path)
+      self.git.checkout({}, commit, '--', path)
+    end
+    
+    def revert(commit)
+      self.git.revert({}, commit)
+    end
 
 
     def blame_tree(commit, path = nil)
