@@ -1,19 +1,11 @@
 module Grit
 
-  class RemoteError < StandardError
-  end
-
-  class RemoteNonexistentError < StandardError
-  end
-
-  class BranchNonexistentError < StandardError
-  end
-
-  class RemoteBranchExistsError < StandardError
-  end
-
-  class RemoteUninitializedError < StandardError
-  end
+  class RemoteError < StandardError; end
+  class RemoteNonexistentError < RemoteError; end
+  class BranchNonexistentError < RemoteError; end
+  class RemoteBranchExistsError < RemoteError; end
+  class RemoteUninitializedError < RemoteError; end
+  class ConflictError < RemoteError; end
 
   class Repo
     DAEMON_EXPORT_FILE = 'git-daemon-export-ok'
@@ -547,6 +539,10 @@ module Grit
           raise BranchNonexistentError, last_error
         elsif last_error =~ /unknown revision or path not in the working tree/
           raise RemoteUninitializedError, last_error
+        elsif last_error =~ /error: Entry '.*' would be overwritten by merge. Cannot merge./
+          raise ConflictError, last_error
+        elsif last_error =~ /Entry '.*' not uptodate. Cannot merge./
+          raise ConflictError, last_error
         elsif last_error =~ /(error|fatal)/
           raise RemoteError, last_error
         end
