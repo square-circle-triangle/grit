@@ -533,6 +533,8 @@ module Grit
           raise RemoteNonexistentError, last_error
         elsif last_error =~ /ssh: Could not resolve hostname .*: nodename nor servname provided, or not known/
           raise RemoteNonexistentError, last_error
+        elsif last_error =~ /does not appear to be a git repository/
+          raise RemoteNonexistentError, last_error
         elsif last_error =~ /fatal: Couldn't find remote ref .*/
           raise BranchNonexistentError, last_error
         elsif last_error =~ /error: src refspec .* does not match any./
