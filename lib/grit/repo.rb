@@ -154,11 +154,11 @@ module Grit
     end
 
     alias :move :mv
-    
+
     def checkout_path_commit(commit, path)
       self.git.checkout({}, commit, '--', path)
     end
-    
+
     def revert(commit)
       self.git.revert({}, commit)
     end
@@ -514,6 +514,11 @@ module Grit
 
     def last_response
       !self.git.last_response.blank? ? self.git.last_response : nil
+    end
+
+    def set_config(key, value = nil)
+      self.git.config({}, key, value)
+      remote_error_or_response
     end
 
     private
