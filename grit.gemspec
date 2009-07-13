@@ -2,11 +2,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{grit}
-  s.version = "1.1.3"
+  s.version = "1.1.4"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Tom Preston-Werner", "Scott Chacon"]
-  s.date = %q{2009-07-03}
+  s.date = %q{2009-07-13}
   s.description = %q{Grit is a Ruby library for extracting information from a git repository in an object oriented manner.}
   s.email = %q{tom@mojombo.com}
   s.extra_rdoc_files = [
