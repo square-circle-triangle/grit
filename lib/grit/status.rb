@@ -71,6 +71,7 @@ module Grit
         @sha_index = hash[:sha_index]
         @sha_repo = hash[:sha_repo]
         @untracked = hash[:untracked]
+        @type = "U" if hash[:unmerged]
       end
 
       def blob(type = :index)
@@ -142,7 +143,11 @@ module Grit
         lines.split("\n").each do |line|
           (info, file) = line.split("\t")
           (mode, sha, stage) = info.split
-          hsh[file] = {:path => file, :mode_index => mode, :sha_index => sha, :stage => stage}
+          if hsh.has_key?(file)
+            hsh[file][:unmerged] = true
+          else
+            hsh[file] = {:path => file, :mode_index => mode, :sha_index => sha, :stage => stage}
+          end
         end
         hsh
       end
