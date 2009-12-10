@@ -137,11 +137,11 @@ module Grit
     end
 
     # Remove files from the index
-    def rm(*files)
+    def remove(*files)
       self.git.rm({}, *files.flatten)
     end
 
-    alias :remove :rm
+    alias :rm :remove
 
     def rm_r(*files)
       self.git.rm({}, '-r', *files.flatten)
@@ -149,11 +149,11 @@ module Grit
 
     alias :remove_recursively :rm_r
 
-    def mv(source, destination)
+    def move(source, destination)
       self.git.mv({}, source, destination)
     end
 
-    alias :move :mv
+    alias :mv :move
 
     def checkout_path_commit(commit, path)
       self.git.checkout({}, commit, '--', path)
@@ -162,7 +162,6 @@ module Grit
     def revert(commit)
       self.git.revert({}, commit)
     end
-
 
     def blame_tree(commit, path = nil)
       commit_array = self.git.blame_tree(commit, path)
@@ -200,6 +199,7 @@ module Grit
 
     def remote_add(name, url)
       self.git.remote({}, 'add', name, url)
+      remote_error_or_response
     end
 
     def remote_fetch(name)
@@ -546,11 +546,6 @@ module Grit
         self.git.pull({}, repository, refspec)
         remote_error_or_response
       end
-    end
-
-    def add_remote(name = nil, url = nil)
-      self.git.remote({}, 'add', name, url)
-      remote_error_or_response
     end
 
     def last_error
