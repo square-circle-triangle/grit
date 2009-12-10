@@ -33,7 +33,7 @@ module Grit
       @committer = committer
       @committed_date = committed_date
       @message = message.join("\n")
-      @short_message = message[0] || ''
+      @short_message = message.select { |x| !x.strip.empty? }[0] || ''
     end
 
     def id_abbrev
@@ -162,7 +162,12 @@ module Grit
     end
 
     def show
-      diff = @repo.git.show({:full_index => true, :pretty => 'raw'}, @id)
+      if parents.size > 1
+        diff = @repo.git.native("diff #{parents[0].id}...#{parents[1].id}", {:full_index => true})
+      else
+        diff = @repo.git.show({:full_index => true, :pretty => 'raw'}, @id)
+      end
+
       if diff =~ /diff --git a/
         diff = diff.sub(/.+?(diff --git a)/m, '\1')
       else
@@ -178,11 +183,11 @@ module Grit
         self.class.diff(@repo, parents.first.id, @id)
       end
     end
-    
+
     def stats
       stats = @repo.commit_stats(self.sha, 1)[0][-1]
     end
-    
+
     # Convert this Commit to a String which is just the SHA1 id
     def to_s
       @id

@@ -1,7 +1,7 @@
 #
 # converted from the gitrb project
 #
-# authors: 
+# authors:
 #    Matthias Lederhofer <matled@gmx.net>
 #    Simon 'corecode' Schubert <corecode@fs.ei.tum.de>
 #    Scott Chacon <schacon@gmail.com>
@@ -31,20 +31,20 @@ module Grit
 
       class NoSuchPath < StandardError
       end
-      
+
       attr_accessor :git_dir, :options
-      
+
       def initialize(git_dir, options = {})
         @git_dir = git_dir
         @options = options
         @packs = []
       end
-      
+
       # returns the loose objects object lazily
       def loose
         @loose ||= initloose
       end
-      
+
       # returns the array of pack list objects
       def packs
         @packs ||= initpacks
@@ -67,7 +67,7 @@ module Grit
         end
       end
 
-     
+
       # returns a raw object given a SHA1
       def get_raw_object_by_sha1(sha1o)
         raise NoSuchShaFound if sha1o.nil? || sha1o.empty? || !sha1o.is_a?(String)
@@ -99,19 +99,19 @@ module Grit
       def cached(key, object, do_cache = true)
         object
       end
-      
+
       # returns GitRuby object of any type given a SHA1
       def get_object_by_sha1(sha1)
         r = get_raw_object_by_sha1(sha1)
         return nil if !r
         GitObject.from_raw(r)
       end
-      
+
       # writes a raw object into the git repo
       def put_raw_object(content, type)
         loose.first.put_raw_object(content, type)
       end
-      
+
       # returns true or false if that sha exists in the db
       def object_exists?(sha1)
         sha_hex = [sha1].pack("H*")
@@ -121,7 +121,7 @@ module Grit
         return true if in_packs?(sha_hex) #maybe the object got packed in the meantime
         false
       end
-      
+
       # returns true if the hex-packed sha is in the packfiles
       def in_packs?(sha_hex)
         # try packs
@@ -130,7 +130,7 @@ module Grit
         end
         false
       end
-      
+
       # returns true if the hex-packed sha is in the loose objects
       def in_loose?(sha_hex)
         loose.each do |lsobj|
@@ -138,34 +138,34 @@ module Grit
         end
         false
       end
-      
-      
+
+
       # returns the file type (as a symbol) of this sha
       def cat_file_type(sha)
         get_raw_object_by_sha1(sha).type
       end
-       
-      # returns the file size (as an int) of this sha           
+
+      # returns the file size (as an int) of this sha
       def cat_file_size(sha)
         get_raw_object_by_sha1(sha).content.size
       end
-      
+
       # returns the raw file contents of this sha
       def cat_file(sha)
         get_object_by_sha1(sha).raw_content
       end
-      
+
       # returns a 2-d hash of the tree
       # ['blob']['FILENAME'] = {:mode => '100644', :sha => SHA}
       # ['tree']['DIRNAME'] = {:mode => '040000', :sha => SHA}
-      def list_tree(sha)        
+      def list_tree(sha)
         data = {'blob' => {}, 'tree' => {}, 'link' => {}, 'commit' => {}}
         get_object_by_sha1(sha).entry.each do |e|
           data[e.format_type][e.name] = {:mode => e.format_mode, :sha => e.sha1}
-        end 
+        end
         data
       end
-      
+
       # returns the raw (cat-file) output for a tree
       # if given a commit sha, it will print the tree of that commit
       # if given a path limiter array, it will limit the output to those
@@ -244,11 +244,11 @@ module Grit
             tree
           end
         end
-      end  
-      
+      end
+
       # returns an array of GitRuby Commit objects
       # [ [sha, raw_output], [sha, raw_output], [sha, raw_output] ... ]
-      # 
+      #
       # takes the following options:
       #  :since - Time object specifying that you don't want commits BEFORE this
       #  :until - Time object specifying that you don't want commit AFTER this
@@ -270,40 +270,40 @@ module Grit
         end
         return new_arr
       end
-      
+
       def rev_list(sha, options)
         if sha.is_a? Array
           (end_sha, sha) = sha
         end
-        
+
         log = log(sha, options)
         log = log.sort { |a, b| a[2] <=> b[2] }.reverse
-                
+
         if end_sha
           log = truncate_arr(log, end_sha)
         end
-        
+
         # shorten the list if it's longer than max_count (had to get everything in branches)
         if options[:max_count]
           if (opt_len = options[:max_count].to_i) < log.size
             log = log[0, opt_len]
           end
         end
-        
+
         if options[:pretty] == 'raw'
           log.map {|k, v| v }.join('')
         else
           log.map {|k, v| k }.join("\n")
         end
       end
-      
+
       # called by log() to recursively walk the tree
       def walk_log(sha, opts, total_size = 0)
         return [] if @already_searched[sha] # to prevent rechecking branches
         @already_searched[sha] = true
-        
-        array = []          
-        if (sha)          
+
+        array = []
+        if (sha)
           o = get_raw_object_by_sha1(sha)
           if o.type == :tag
             commit_sha = get_object_by_sha1(sha).object
@@ -313,61 +313,61 @@ module Grit
           end
 
           return [] if c.type != :commit
-          
+
           add_sha = true
-          
+
           if opts[:since] && opts[:since].is_a?(Time) && (opts[:since] > c.committer.date)
             add_sha = false
           end
           if opts[:until] && opts[:until].is_a?(Time) && (opts[:until] < c.committer.date)
             add_sha = false
           end
-          
+
           # follow all parents unless '--first-parent' is specified #
           subarray = []
-          
+
           if !c.parent.first && opts[:path_limiter]  # check for the last commit
             add_sha = false
           end
-          
+
           if (!opts[:max_count] || ((array.size + total_size) < opts[:max_count]))
-            
+
             if !opts[:path_limiter]
               output = c.raw_log(sha)
               array << [sha, output, c.committer.date]
             end
-            
+
             if (opts[:max_count] && (array.size + total_size) >= opts[:max_count])
               return array
             end
-            
+
             c.parent.each do |psha|
               if psha && !files_changed?(c.tree, get_object_by_sha1(psha).tree,
                                         opts[:path_limiter])
-                add_sha = false 
+                add_sha = false
               end
-              subarray += walk_log(psha, opts, (array.size + total_size)) 
+              subarray += walk_log(psha, opts, (array.size + total_size))
               next if opts[:first_parent]
             end
-          
+
             if opts[:path_limiter] && add_sha
               output = c.raw_log(sha)
               array << [sha, output, c.committer.date]
-            end          
-            
+            end
+
             if add_sha
               array += subarray
             end
           end
-                                
+
         end
-        
+
         array
       end
 
       def diff(commit1, commit2, options = {})
         patch = ''
-        
+
         commit_obj1 = get_object_by_sha1(commit1)
         tree1 = commit_obj1.tree
         if commit2
@@ -375,37 +375,41 @@ module Grit
         else
           tree2 = get_object_by_sha1(commit_obj1.parent.first).tree
         end
-        
+
         qdiff = quick_diff(tree1, tree2)
-        
+
         qdiff.sort.each do |diff_arr|
+          path, status, treeSHA1, treeSHA2 = *diff_arr
           format, lines, output = :unified, 3, ''
           file_length_difference = 0
-          
-          fileA = (diff_arr[2]) ? cat_file(diff_arr[2]) : ''
-          fileB = (diff_arr[3]) ? cat_file(diff_arr[3]) : ''
-          
-          sha1 = (diff_arr[2]) ? diff_arr[2] : '0000000000000000000000000000000000000000'
-          sha2 = (diff_arr[3]) ? diff_arr[3] : '0000000000000000000000000000000000000000'
+
+          fileA = treeSHA1 ? cat_file(treeSHA1) : ''
+          fileB = treeSHA2 ? cat_file(treeSHA2) : ''
+
+          sha1 = treeSHA1 || '0000000000000000000000000000000000000000'
+          sha2 = treeSHA2 || '0000000000000000000000000000000000000000'
 
           data_old = fileA.split(/\n/).map! { |e| e.chomp }
           data_new = fileB.split(/\n/).map! { |e| e.chomp }
-          
-          diffs = Difference::LCS.diff(data_old, data_new)    
+
+          diffs = Difference::LCS.diff(data_old, data_new)
           next if diffs.empty?
 
-          header = 'diff --git a/' + diff_arr[0].gsub('./', '') + ' b/' + diff_arr[0].gsub('./', '')
+          a_path = "a/#{path.gsub('./', '')}"
+          b_path = "b/#{path.gsub('./', '')}"
+
+          header = "diff --git #{a_path} #{b_path}"
           if options[:full_index]
             header << "\n" + 'index ' + sha1 + '..' + sha2
-            header << ' 100644' if diff_arr[3] # hard coding this because i don't think we use it
+            header << ' 100644' if treeSHA2 # hard coding this because i don't think we use it
           else
             header << "\n" + 'index ' + sha1[0,7] + '..' + sha2[0,7]
-            header << ' 100644' if diff_arr[3] # hard coding this because i don't think we use it
+            header << ' 100644' if treeSHA2 # hard coding this because i don't think we use it
           end
-          header << "\n--- " + 'a/' + diff_arr[0].gsub('./', '')
-          header << "\n+++ " + 'b/' + diff_arr[0].gsub('./', '')
+          header << "\n--- " + (treeSHA1 ? a_path : '/dev/null')
+          header << "\n+++ " + (treeSHA2 ? b_path : '/dev/null')
           header += "\n"
-          
+
           oldhunk = hunk = nil
 
           diffs.each do |piece|
@@ -425,21 +429,21 @@ module Grit
               output << "\n"
             end
           end
-          
+
           output << oldhunk.diff(format)
           output << "\n"
-          
-          patch << header + output.lstrip      
+
+          patch << header + output.lstrip
         end
         patch
       rescue
-        '' # one of the trees was bad or lcs isn't there - no diff 
+        '' # one of the trees was bad or lcs isn't there - no diff
       end
-      
+
       # takes 2 tree shas and recursively walks them to find out what
-      # files or directories have been modified in them and returns an 
+      # files or directories have been modified in them and returns an
       # array of changes
-      # [ [full_path, 'added', tree1_hash, nil], 
+      # [ [full_path, 'added', tree1_hash, nil],
       #   [full_path, 'removed', nil, tree2_hash],
       #   [full_path, 'modified', tree1_hash, tree2_hash]
       #  ]
@@ -447,10 +451,10 @@ module Grit
          # handle empty trees
          changed = []
          return changed if tree1 == tree2
-         
+
          t1 = list_tree(tree1) if tree1
          t2 = list_tree(tree2) if tree2
-        
+
          # finding files that are different
          t1['blob'].each do |file, hsh|
            t2_file = t2['blob'][file] rescue nil
@@ -472,7 +476,7 @@ module Grit
            full = File.join(path, dir)
            if !t2_tree
              if recurse
-               changed += quick_diff(hsh[:sha], nil, full, true) 
+               changed += quick_diff(hsh[:sha], nil, full, true)
              else
                changed << [full, 'added', hsh[:sha], nil]      # not in parent
              end
@@ -489,7 +493,7 @@ module Grit
            full = File.join(path, dir)
            if !t1_tree
              if recurse
-               changed += quick_diff(nil, hsh[:sha], full, true) 
+               changed += quick_diff(nil, hsh[:sha], full, true)
              else
                changed << [full, 'removed', nil, hsh[:sha]]
              end
@@ -514,10 +518,10 @@ module Grit
         end
         true
       end
-        
+
       def get_subtree(commit_sha, path)
         tree_sha = get_object_by_sha1(commit_sha).tree
-        
+
         if path && !(path == '' || path == '.' || path == './')
           paths = path.split('/')
           paths.each do |path|
@@ -529,10 +533,10 @@ module Grit
             end
           end
         end
-        
+
         tree_sha
       end
-      
+
       def blame_tree(commit_sha, path)
         # find subtree
         tree_sha = get_subtree(commit_sha, path)
@@ -542,10 +546,10 @@ module Grit
         get_object_by_sha1(tree_sha).entry.each do |e|
           looking_for << File.join('.', e.name)
         end
-                        
+
         @already_searched = {}
         commits = look_for_commits(commit_sha, path, looking_for)
-        
+
         # cleaning up array
         arr = {}
         commits.each do |commit_array|
@@ -554,33 +558,33 @@ module Grit
         end
         arr
       end
-    
-      def look_for_commits(commit_sha, path, looking_for, options = {})        
+
+      def look_for_commits(commit_sha, path, looking_for, options = {})
         return [] if @already_searched[commit_sha] # to prevent rechecking branches
-                
+
         @already_searched[commit_sha] = true
-        
+
         commit = get_object_by_sha1(commit_sha)
         tree_sha = get_subtree(commit_sha, path)
 
         found_data = []
-        
+
         # at the beginning of the branch
-        if commit.parent.size == 0  
+        if commit.parent.size == 0
           looking_for.each do |search|
-            # prevents the rare case of multiple branch starting points with 
+            # prevents the rare case of multiple branch starting points with
             # files that have never changed
-            if found_data.assoc(search) 
+            if found_data.assoc(search)
               found_data << [search, commit_sha]
             end
           end
           return found_data
         end
-        
+
         # go through the parents recursively, looking for somewhere this has been changed
         commit.parent.each do |pc|
           diff = quick_diff(tree_sha, get_subtree(pc, path), '.', false)
-          
+
           # remove anything found
           looking_for.each do |search|
             if match = diff.assoc(search)
@@ -588,7 +592,7 @@ module Grit
               looking_for.delete(search)
             end
           end
-          
+
           if looking_for.size <= 0  # we're done
             return found_data
           end
@@ -596,13 +600,13 @@ module Grit
           found_data += look_for_commits(pc, path, looking_for)  # recurse into parent
           return found_data if options[:first_parent]
         end
-        
+
         ## TODO : find most recent commit with change in any parent
         found_data
       end
-      
+
       # initialize a git repository
-      def self.init(dir, bare = false)
+      def self.init(dir, bare = true)
 
         FileUtils.mkdir_p(dir) if !File.exists?(dir)
 
@@ -646,22 +650,22 @@ module Grit
         File.open(name, 'w') do |f|
           f.write contents
         end
-      end      
-      
+      end
+
       def close
         @packs.each do |pack|
           pack.close
         end if @packs
       end
-      
+
       protected
 
         def git_path(path)
           return "#@git_dir/#{path}"
         end
 
-      private 
-      
+      private
+
         def initloose
           @loaded = []
           @loose = []
@@ -669,7 +673,7 @@ module Grit
           load_alternate_loose(git_path('objects'))
           @loose
         end
-        
+
         def load_alternate_loose(path)
           # load alternate loose, too
           alt = File.join(path, 'info/alternates')
@@ -684,13 +688,13 @@ module Grit
             end
           end
         end
-      
+
         def load_loose(path)
           @loaded << path
           return if !File.exists?(path)
           @loose << Grit::GitRuby::Internal::LooseStorage.new(path)
         end
-        
+
         def initpacks
           close
           @loaded_packs = []
@@ -699,7 +703,7 @@ module Grit
           load_alternate_packs(git_path('objects'))
           @packs
         end
-      
+
         def load_alternate_packs(path)
           alt = File.join(path, 'info/alternates')
           if File.exists?(alt)
@@ -714,7 +718,7 @@ module Grit
             end
           end
         end
-        
+
         def load_packs(path)
           @loaded_packs << path
           return if !File.exists?(path)
@@ -729,8 +733,8 @@ module Grit
             end
           end
         end
-      
+
     end
-    
+
   end
 end

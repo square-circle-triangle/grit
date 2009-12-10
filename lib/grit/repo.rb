@@ -83,7 +83,7 @@ module Grit
     #
     # Returns String
     def description
-      File.open(File.join(self.path, 'description')).read.chomp
+      self.git.fs_read('description').chomp
     end
 
     def blame(file, commit = nil)
@@ -193,6 +193,34 @@ module Grit
     def remotes
       Remote.find_all(self)
     end
+
+    def remote_list
+      self.git.list_remotes
+    end
+
+    def remote_add(name, url)
+      self.git.remote({}, 'add', name, url)
+    end
+
+    def remote_fetch(name)
+      self.git.fetch({}, name)
+    end
+
+    # takes an array of remote names and last pushed dates
+    # fetches from all of the remotes where the local fetch
+    # date is earlier than the passed date, then records the
+    # last fetched date
+    #
+    # { 'origin' => date,
+    #   'peter => date,
+    # }
+    def remotes_fetch_needed(remotes)
+      remotes.each do |remote, date|
+        # TODO: check against date
+        self.remote_fetch(remote)
+      end
+    end
+
 
     # An array of Ref objects representing the refs in
     # this repo
@@ -335,7 +363,9 @@ module Grit
     #
     # Returns Grit::Repo (the newly created repo)
     def self.init_bare(path, git_options = {}, repo_options = {})
+      git_options = {:bare => true}.merge(git_options)
       git = Git.new(path)
+      git.fs_mkdir('..')
       git.init(git_options)
       self.new(path, repo_options)
     end
@@ -348,8 +378,22 @@ module Grit
     def fork_bare(path, options = {})
       default_options = {:bare => true, :shared => true}
       real_options = default_options.merge(options)
+      Git.new(path).fs_mkdir('..')
       self.git.clone(real_options, self.path, path)
       Repo.new(path)
+    end
+
+    # Fork a bare git repository from another repo
+    #   +path+ is the full path of the new repo (traditionally ends with /<name>.git)
+    #   +options+ is any additional options to the git clone command (:bare and :shared are true by default)
+    #
+    # Returns Grit::Repo (the newly forked repo)
+    def fork_bare_from(path, options = {})
+      default_options = {:bare => true, :shared => true}
+      real_options = default_options.merge(options)
+      Git.new(self.path).fs_mkdir('..')
+      self.git.clone(real_options, path, self.path)
+      Repo.new(self.path)
     end
 
     # Archive the given treeish
@@ -391,7 +435,7 @@ module Grit
     def archive_tar_gz(treeish = 'master', prefix = nil)
       options = {}
       options[:prefix] = prefix if prefix
-      self.git.archive(options, treeish, "| gzip")
+      self.git.archive(options, treeish, "| gzip -n")
     end
 
     # Write an archive directly to a file
@@ -414,7 +458,7 @@ module Grit
     #
     # Returns nothing
     def enable_daemon_serve
-      FileUtils.touch(File.join(self.path, DAEMON_EXPORT_FILE))
+      self.git.fs_write(DAEMON_EXPORT_FILE, '')
     end
 
     # Disable git-daemon serving of this repository by ensuring there is no
@@ -422,7 +466,7 @@ module Grit
     #
     # Returns nothing
     def disable_daemon_serve
-      FileUtils.rm_f(File.join(self.path, DAEMON_EXPORT_FILE))
+      self.git.fs_delete(DAEMON_EXPORT_FILE)
     end
 
     def gc_auto
@@ -433,10 +477,9 @@ module Grit
     #
     # Returns Array[String] (pathnames of alternates)
     def alternates
-      alternates_path = File.join(self.path, *%w{objects info alternates})
-
-      if File.exist?(alternates_path)
-        File.read(alternates_path).strip.split("\n")
+      alternates_path = "objects/info/alternates"
+      if self.git.fs_exist?(alternates_path)
+        self.git.fs_read(alternates_path).strip.split("\n")
       else
         []
       end
@@ -454,13 +497,9 @@ module Grit
       end
 
       if alts.empty?
-        File.open(File.join(self.path, *%w{objects info alternates}), 'w') do |f|
-          f.write ''
-        end
+        self.git.fs_write('objects/info/alternates', '')
       else
-        File.open(File.join(self.path, *%w{objects info alternates}), 'w') do |f|
-          f.write alts.join("\n")
-        end
+        self.git.fs_write('objects/info/alternates', alts.join("\n"))
       end
     end
 
@@ -474,14 +513,20 @@ module Grit
 
     def update_ref(head, commit_sha)
       return nil if !commit_sha || (commit_sha.size != 40)
-
-      ref_heads = File.join(self.path, 'refs', 'heads')
-      FileUtils.mkdir_p(ref_heads)
-      File.open(File.join(ref_heads, head), 'w') do |f|
-        f.write(commit_sha)
-      end
+      self.git.fs_write("refs/heads/#{head}", commit_sha)
       commit_sha
+    end
 
+    # Rename the current repository directory.
+    #   +name+ is the new name
+    #
+    # Returns nothing
+    def rename(name)
+      if @bare
+        self.git.fs_move('/', "../#{name}")
+      else
+        self.git.fs_move('/', "../../#{name}")
+      end
     end
 
     # Pretty object inspection
