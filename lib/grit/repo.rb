@@ -59,7 +59,15 @@ module Grit
 
       git = Git.new(path, working_dir)
 
-      git.init
+      if options.has_key?(:bare)
+        bare = options[:bare]
+      elsif options.has_key?(:is_bare)
+        bare = options[:is_bare]
+      else
+        bare = true
+      end
+
+      git.init(:bare => bare)
 
       Repo.new(path)
     end
